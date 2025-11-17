@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>عملیات روی مجموعه‌ها — نمایشگاه</title>
+
+<style>
+  :root{
+    --violet:#7b1fa2;
+    --blue:#1565c0;
+    --muted:#6b7280;
+  }
+
+  body{
+    margin:0;
+    font-family:Tahoma, sans-serif;
+    background:#faf7ff;
+    color:#111;
+  }
+
+  header{
+    background:linear-gradient(90deg,#f5eaff,var(--violet));
+    color:#fff;
+    padding:14px 20px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+
+  .profile{
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+
+  .avatar{
+    width:48px;height:48px;
+    border-radius:50%;
+    background:#fff3;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-weight:700;
+    font-size:20px;
+    color:white;
+  }
+
+  main{
+    max-width:1000px;
+    margin:20px auto;
+    padding:0 14px;
+  }
+
+  .card{
+    background:white;
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:14px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.06);
+  }
+
+  label{display:block; font-weight:700; margin:10px 0 6px;}
+  select,input,button{
+    padding:10px;
+    border-radius:8px;
+    border:1px solid #ddd;
+    font-size:15px;
+    width:100%;
+  }
+
+  button{
+    background:var(--violet);
+    color:white;
+    border:none;
+    cursor:pointer;
+  }
+
+  pre{
+    background:#f6f3ff;
+    padding:10px;
+    border-radius:8px;
+    white-space:pre-wrap;
+    font-size:14px;
+    border:1px solid #e8e0ff;
+  }
+
+  /* 🔵 نوار عملیات */
+  .op-strip{
+    display:flex;
+    gap:8px;
+    padding:10px 4px;
+  }
+
+  .op{
+    padding:8px 14px;
+    background:#fff8;
+    border-radius:8px;
+    border:1px solid #dacbff;
+    font-size:18px;
+    transition:0.25s;
+  }
+
+  .op.active{
+    background:#fff4d6;
+    transform:translateY(-5px);
+    box-shadow:0 6px 20px rgba(0,0,0,0.1);
+  }
+</style>
+</head>
+
+<body>
+
+<header>
+  <div style="font-weight:800;font-size:20px;">
+    عملیات روی مجموعه‌ها
+  </div>
+
+  <div class="profile">
+    <div id="userNameDisplay" style="font-size:13px;"></div>
+    <div id="avatar" class="avatar"></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- 🔵 نمایش A -->
+  <div class="card" id="showA"></div>
+
+  <!-- 🔵 ساخت B -->
+  <div class="card">
+    <label>ساخت مجموعهٔ B (روش)</label>
+    <select id="methodB">
+      <option value="">انتخاب کنید...</option>
+      <option value="members">نوشتن اعضا (مثلاً: 1,2,3)</option>
+      <option value="symbol">نوشتن نماد (مثلاً: { x ∈ N | x ≤ 5 })</option>
+      <option value="known">از مجموعه‌های شناخته‌شده</option>
+    </select>
+
+    <div id="Bcontent" style="margin-top:10px"></div>
+  </div>
+
+  <!-- 🔵 عملیات -->
+  <div class="card">
+
+    <label>انتخاب عمل</label>
+    <select id="operation">
+      <option value="">انتخاب کنید...</option>
+      <option value="union">اجتماع (A ∪ B)</option>
+      <option value="intersection">اشتراک (A ∩ B)</option>
+      <option value="difference">تفاضل (A − B)</option>
+      <option value="subset">آیا A ⊂ B است؟</option>
+    </select>
+
+    <!-- 🔵 نوار عملیات متحرک -->
+    <div class="op-strip" id="op-strip">
+      <div class="op">÷</div>
+      <div class="op">+</div>
+      <div class="op">×</div>
+      <div class="op">−</div>
+    </div>
+
+    <button id="btnCompute" style="margin-top:10px">نمایش و محاسبه</button>
+    <button id="btnSave" style="background:#3b82f6;margin-top:10px">ذخیره نتیجه</button>
+
+    <div id="resultBox" style="margin-top:12px;font-size:15px;"></div>
+  </div>
+
+  <!-- 🔵 تاریخچه -->
+  <div class="card">
+    <label>تاریخچه ذخیره‌شده</label>
+    <div id="history"></div>
+  </div>
+
+</main>
+
+<script>
+// ======================= پروفایل =======================
+const user = localStorage.getItem("userName") || "کاربر";
+document.getElementById("userNameDisplay").innerText = user;
+
+let initials = user.split(" ")[0][0];
+if(user.split(" ")[1]) initials += user.split(" ")[1][0];
+document.getElementById("avatar").innerText = initials;
+
+
+// ======================= مجموعه A =======================
+const showA = document.getElementById("showA");
+let setA = {type:"unknown", members:[], expr:null};
+
+const savedExpr = localStorage.getItem("setA_expr");
+const savedRaw = localStorage.getItem("setA_cond_raw");
+const savedSet = localStorage.getItem("setA_set");
+
+if(savedExpr){
+  showA.innerHTML =
+    `<b>مجموعه A (ذخیره‌شده):</b><br>
+     <div style="margin-top:6px;padding:10px;background:#f7faff;border-radius:8px;border:1px solid #e3eaff;">${savedExpr}</div>`;
+
+  const nums = (savedRaw||"").match(/-?\d+/g);
+  if(nums) setA = {type:"finite", members:[...new Set(nums.map(Number))]};
+  else setA = {type:"symbolic", expr:savedExpr, raw:savedRaw, symbol:savedSet};
+}
+else{
+  showA.innerHTML =
+    `<b style="color:#c00">مجموعه A تعریف نشده است.</b><br>
+     ابتدا در صفحه قبل آن را بسازید.`;
+}
+
+
+// ======================= ساخت B =======================
+const methodB = document.getElementById("methodB");
+methodB.addEventListener("change", () => {
+  if(methodB.value==="members"){
+    Bcontent.innerHTML =
+      `<label>اعضای B:</label>
+       <input id="membersB" placeholder="مثلاً: 1,2,3">`;
+  }
+  else if(methodB.value==="symbol"){
+    Bcontent.innerHTML =
+      `<label>نماد B:</label>
+       <input id="symbolB" placeholder="{ x ∈ N | x ≤ 5 }">`;
+  }
+  else if(methodB.value==="known"){
+    Bcontent.innerHTML =
+      `<label>انتخاب مجموعه:</label>
+       <select id="knownB">
+          <option value="N">N</option>
+          <option value="W">W</option>
+          <option value="Z">Z</option>
+          <option value="Q">Q</option>
+          <option value="I">I</option>
+          <option value="R">R</option>
+       </select>`;
+  }
+  else Bcontent.innerHTML = "";
+});
+
+
+function readSetB(){
+  const type = methodB.value;
+
+  if(type==="members"){
+    const t = membersB.value.trim();
+    const nums = t.match(/-?\d+/g);
+    return nums ? {type:"finite", members:[...new Set(nums.map(Number))]} : {type:"empty"};
+  }
+
+  if(type==="symbol"){
+    const t = symbolB.value;
+    const nums = t.match(/-?\d+/g);
+
+    if(nums) return {type:"finite", members:[...new Set(nums.map(Number))]};
+    return {type:"symbolic", raw:t};
+  }
+
+  if(type==="known"){
+    return {type:"symbolic", symbol:knownB.value};
+  }
+
+  return {type:"empty"};
+}
+
+
+// ======================= عملیات =======================
+function union(A,B){ return [...new Set([...A,...B])].sort((a,b)=>a-b); }
+function intersection(A,B){ return A.filter(x=>B.includes(x)).sort((a,b)=>a-b); }
+function difference(A,B){ return A.filter(x=>!B.includes(x)).sort((a,b)=>a-b); }
+function subset(A,B){ return A.every(x=>B.includes(x)); }
+
+const resultBox = document.getElementById("resultBox");
+
+document.getElementById("btnCompute").onclick = () => {
+  const op = operation.value;
+  if(!op){ resultBox.innerText = "یک عمل انتخاب کنید."; return; }
+
+  const B = readSetB();
+  resultBox.innerHTML = "";
+
+  // عملیات روی متناهی‌ها
+  if(setA.type==="finite" && B.type==="finite"){
+    const Avals = setA.members;
+    const Bvals = B.members;
+
+    let C=null;
+
+    if(op==="union") C = union(Avals,Bvals);
+    if(op==="intersection") C = intersection(Avals,Bvals);
+    if(op==="difference") C = difference(Avals,Bvals);
+    if(op==="subset"){
+      resultBox.innerHTML = subset(Avals,Bvals) ? "بله، زیرمجموعه است." : "خیر، زیرمجموعه نیست.";
+      return;
+    }
+
+    resultBox.innerHTML = `{ ${C.join(", ")} }`;
+    return;
+  }
+
+  // حالت نمادی
+  resultBox.innerHTML =
+    "برای این نوع مجموعه‌ها نتیجه به‌صورت نمادی توضیح داده می‌شود و قابل محاسبه دقیق نیست (نامتناهی).";
+};
+
+
+// ======================= ذخیره نتیجه =======================
+document.getElementById("btnSave").onclick = () => {
+  const text = resultBox.innerText || "بدون نتیجه";
+  const arr = JSON.parse(localStorage.getItem("ops_history") || "[]");
+
+  arr.unshift({
+    time: new Date().toLocaleString("fa-IR"),
+    result: text
+  });
+
+  localStorage.setItem("ops_history", JSON.stringify(arr.slice(0,20)));
+  loadHistory();
+  alert("نتیجه ذخیره شد.");
+};
+
+
+// ======================= نمایش تاریخچه =======================
+function loadHistory(){
+  const arr = JSON.parse(localStorage.getItem("ops_history") || "[]");
+  if(arr.length===0){
+    history.innerHTML = "<div style='color:#888'>هیچ نتیجه‌ای ذخیره نشده.</div>";
+    return;
+  }
+
+  history.innerHTML = arr.map(h =>
+    `<div style="padding:8px; border-radius:8px; background:#fff; margin-bottom:8px; border:1px solid #eee;">
+      <div style="font-size:12px;color:#666">${h.time}</div>
+      <pre>${h.result}</pre>
+     </div>`
+  ).join("");
+}
+loadHistory();
+
+
+// ======================= انیمیشن نوار عملیات =======================
+const ops = document.querySelectorAll(".op");
+let idx = 0;
+
+setInterval(()=>{
+  ops.forEach(o=>o.classList.remove("active"));
+  ops[idx].classList.add("active");
+  idx = (idx+1) % ops.length;
+}, 900);
+
+</script>
+
+</body>
+</html>

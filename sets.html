@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نمایشگاه مجموعه‌ها — تعریف مجموعه</title>
+
+<style>
+  :root{
+    --blue:#1565c0;
+    --light:#f4fbff;
+    --muted:#6b7280;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    padding:16px;
+    font-family:"Tahoma",sans-serif;
+    background:var(--light);
+  }
+
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+  }
+
+  .avatar{
+    width:48px; height:48px;
+    background:var(--blue);
+    color:white;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:19px;
+    font-weight:700;
+  }
+
+  main{
+    max-width:1200px;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:380px 1fr;
+    gap:18px;
+  }
+
+  .card{
+    background:white;
+    border-radius:12px;
+    padding:14px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.07);
+  }
+
+  label{font-weight:700; margin-top:10px; display:block;}
+  select,input{padding:8px; border-radius:8px; border:1px solid #ddd; width:100%; font-size:15px;}
+  button{padding:10px; border:0; border-radius:8px; background:var(--blue); color:white; font-size:15px; cursor:pointer;}
+
+  .small{color:var(--muted); font-size:13px;}
+
+  .vis-area{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    height:580px;
+  }
+
+  canvas{
+    width:100%;
+    height:230px;
+    border:1px solid #e0e0e0;
+    border-radius:10px;
+    background:white;
+  }
+
+  .op-strip{
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+  }
+
+  .op{
+    padding:8px 12px;
+    border-radius:8px;
+    background:#eef3ff;
+    border:1px solid #dbe4ff;
+    font-size:18px;
+    transition:0.2s;
+  }
+  .op.active{
+    background:#fff4d8;
+    transform:translateY(-4px);
+    box-shadow:0 6px 16px rgba(0,0,0,0.12);
+  }
+
+  .result-box{
+    background:white;
+    padding:10px;
+    border-radius:10px;
+    min-height:40px;
+    font-size:15px;
+    box-shadow:inset 0 0 0 1px #eee;
+  }
+
+  .examples{
+    margin-top:8px;
+    max-height:150px;
+    overflow-y:auto;
+    font-size:14px;
+    background:#fafcff;
+    padding:8px;
+    border-radius:8px;
+    border:1px solid #e0e0e0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h2 style="margin:0">نمایشگاه مجموعه‌ها — تعریف</h2>
+
+  <div style="display:flex;gap:10px;align-items:center;">
+    <div id="userNameText" class="small"></div>
+    <div id="avatar" class="avatar"></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- 👈 ستون تعریف مجموعه -->
+  <div class="card">
+
+    <label>انتخاب مجموعه جهانی (شناخته‌شده)</label>
+    <select id="knownSet">
+      <option value="">انتخاب کنید...</option>
+      <option value="N">N — اعداد طبیعی (۱٬۲٬۳٬…)</option>
+      <option value="W">W — اعداد حسابی (۰٬۱٬۲٬…)</option>
+      <option value="Z">Z — اعداد صحیح (...٬−۲٬−۱٬۰٬۱٬۲٬…)</option>
+      <option value="Q">Q — اعداد گویا (مانند کسرها)</option>
+      <option value="I">I — اعداد گنگ (√۲، π و…)</option>
+      <option value="R">R — اعداد حقیقی (بی‌پایان و پیوسته)</option>
+    </select>
+
+    <label>شرط را وارد کنید</label>
+    <input id="conditionInput" placeholder="مثلاً: x ≥ 3 یا x < 5">
+
+    <div class="small">x نمایندهٔ اعضای مجموعه است.</div>
+
+    <div style="display:flex;gap:6px;margin-top:12px;">
+      <button onclick="makeExpression()">نماد ریاضی</button>
+      <button onclick="showMembers()">نمایش اعضا</button>
+      <button onclick="showVenn()">نمودار ون</button>
+      <button onclick="showAxis()">نمایش محور</button>
+    </div>
+
+    <div id="exprBox" class="result-box" style="margin-top:12px;"></div>
+
+    <!-- مثال‌ها -->
+    <div style="margin-top:18px;">
+      <label>مثال‌ها</label>
+      <div style="display:flex;gap:8px;">
+        <input id="exampleInput" placeholder="مثلاً: x ≥ 3 in N">
+        <button onclick="saveExample()">ذخیره</button>
+      </div>
+
+      <div id="examplesList" class="examples"></div>
+    </div>
+
+  </div>
+
+  <!-- 👉 ستون نمایش -->
+  <div class="card vis-area">
+
+    <div class="op-strip" id="opStrip">
+      <div class="op">÷</div>
+      <div class="op">+</div>
+      <div class="op">×</div>
+      <div class="op">−</div>
+    </div>
+
+    <canvas id="vennCanvas"></canvas>
+    <canvas id="axisCanvas"></canvas>
+
+    <div id="membersBox" class="result-box">اینجا اعضا نمایش داده می‌شود.</div>
+
+  </div>
+
+</main>
+
+
+<script>
+// 🟦 نام و پروفایل
+const user = localStorage.getItem("userName") || "کاربر";
+document.getElementById("userNameText").innerText = user;
+let initials = user.split(" ")[0][0];
+if(user.split(" ")[1]) initials += user.split(" ")[1][0];
+document.getElementById("avatar").innerText = initials;
+
+// 🟦 تبدیل شرط فارسی → ریاضی
+function fixCond(c){
+  return c.replace(/بزرگتر مساوی|≥/g, ">=")
+          .replace(/کوچکتر مساوی|≤/g, "<=")
+          .replace(/بزرگتر|>/g, ">")
+          .replace(/کوچکتر|</g, "<")
+          .replace(/مساوی|=/g, "=");
+}
+
+// 🟦 نماد ریاضی
+function makeExpression(){
+  const set = document.getElementById("knownSet").value;
+  const cond = fixCond(document.getElementById("conditionInput").value.trim());
+  if(!set || !cond){
+    alert("مجموعه و شرط را وارد کنید.");
+    return;
+  }
+  document.getElementById("exprBox").innerText = `{ x ∈ ${set} | ${cond} }`;
+}
+
+// 🟦 نمایش اعضا (فقط برای مجموعه‌های نمایش‌پذیر)
+function showMembers(){
+  const set = document.getElementById("knownSet").value;
+  const cond = fixCond(document.getElementById("conditionInput").value.trim());
+  const box = document.getElementById("membersBox");
+
+  if(set==="N") box.innerText = "{ 1, 2, 3, ... }";
+  else if(set==="W") box.innerText = "{ 0, 1, 2, 3, ... }";
+  else if(set==="Z") box.innerText = "{ ..., -2, -1, 0, 1, 2, ... }";
+  else box.innerText = "قابل نمایش نیست (نامتناهی یا غیر قابل ترسیم)";
+}
+
+// 🟦 نمودار ون
+function showVenn(){
+  const set = document.getElementById("knownSet").value;
+  const canvas = document.getElementById("vennCanvas");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  if(!["N","W","Z"].includes(set)){
+    ctx.font="20px Tahoma";
+    ctx.fillText("این مجموعه قابل نمایش در نمودار ون نیست.",20,50);
+    return;
+  }
+
+  const x = canvas.width/2;
+  const y = canvas.height/2;
+  const r = 70;
+
+  ctx.beginPath();
+  ctx.arc(x-60, y, r, 0, 2*Math.PI);
+  ctx.strokeStyle="#1565c0";
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(x+60, y, r, 0, 2*Math.PI);
+  ctx.strokeStyle="#ff9800";
+  ctx.stroke();
+}
+
+// 🟦 محور
+function showAxis(){
+  const canvas = document.getElementById("axisCanvas");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  let y = canvas.height/2;
+  ctx.lineWidth = 2;
+
+  // محور
+  ctx.beginPath();
+  ctx.moveTo(30,y);
+  ctx.lineTo(canvas.width-30,y);
+  ctx.stroke();
+
+  // علامت بی‌نهایت
+  ctx.font="22px Tahoma";
+  ctx.fillText("... ", canvas.width-60, y-10);
+  ctx.fillText("... ", 20, y-10);
+
+  // اعداد نمونه
+  let xStart = 80;
+  for(let i=1;i<=5;i++){
+    ctx.beginPath();
+    ctx.arc(xStart+i*60,y,6,0,2*Math.PI);
+    ctx.fill();
+    ctx.fillText(i, xStart+i*60-3, y+22);
+  }
+}
+
+// 🟦 ذخیره مثال
+function saveExample(){
+  let ex = document.getElementById("exampleInput").value.trim();
+  if(!ex) return;
+  let list = JSON.parse(localStorage.getItem("examples") || "[]");
+  list.unshift(ex);
+  localStorage.setItem("examples", JSON.stringify(list));
+  loadExamples();
+}
+
+function loadExamples(){
+  let list = JSON.parse(localStorage.getItem("examples") || "[]");
+  let box = document.getElementById("examplesList");
+  box.innerHTML = list.map(e=>"- "+e).join("<br>");
+}
+loadExamples();
+
+</script>
+
+</body>
+</html>
